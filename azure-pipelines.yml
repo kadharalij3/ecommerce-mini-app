@@ -6,6 +6,8 @@ variables:
   webAppName: 'testwebabb'
   environmentName: 'testwebabb'
   vmImageName: 'ubuntu-latest'
+  nodeVersion: '20.x'
+  appFolder: 'client'
 
 stages:
 - stage: Build
@@ -17,30 +19,40 @@ stages:
       vmImage: $(vmImageName)
 
     steps:
+    - checkout: self
+
     - task: NodeTool@0
-      inputs:
-        versionSpec: '20.x'
       displayName: 'Install Node.js'
+      inputs:
+        versionSpec: '$(nodeVersion)'
 
     - script: |
+        pwd
         ls -la
-        cat package.json
+        ls -la "$(System.DefaultWorkingDirectory)/$(appFolder)"
+        cat "$(System.DefaultWorkingDirectory)/$(appFolder)/package.json"
         npm ci
         npm run build
         npm run test --if-present
-        echo "After build:"
         ls -la
-        find $(System.DefaultWorkingDirectory) -maxdepth 3 -type d \( -name dist -o -name build \)
+        ls -la dist
       displayName: 'npm install, build and test'
+      workingDirectory: '$(System.DefaultWorkingDirectory)/$(appFolder)'
 
-    - task: ArchiveFiles@2
+    - task: Bash@3
       displayName: 'Archive dist folder'
       inputs:
-        rootFolderOrFile: '$(System.DefaultWorkingDirectory)/$(appFolder)/dist'
-        includeRootFolder: true
-        archiveType: zip
-        archiveFile: '$(Build.ArtifactStagingDirectory)/site.zip'
-        replaceExistingArchive: true
+        targetType: 'inline'
+        script: |
+          set -e
+          if ! command -v zip >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y zip
+          fi
+
+          cd "$(System.DefaultWorkingDirectory)/$(appFolder)"
+          test -d dist
+          zip -r "$(Build.ArtifactStagingDirectory)/site.zip" dist
 
     - upload: '$(Build.ArtifactStagingDirectory)/site.zip'
       artifact: drop
@@ -65,9 +77,9 @@ stages:
           - task: AzureWebApp@1
             displayName: 'Azure Web App Deploy: testwebabb'
             inputs:
-              azureSubscription: $(azureSubscription)
-              appType: webAppLinux
-              appName: $(webAppName)
+              azureSubscription: '$(azureSubscription)'
+              appType: 'webAppLinux'
+              appName: '$(webAppName)'
               runtimeStack: 'NODE|20-lts'
               package: '$(Pipeline.Workspace)/drop/site.zip'
               startupCommand: 'pm2 serve /home/site/wwwroot/dist --no-daemon --spa'
