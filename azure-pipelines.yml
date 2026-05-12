@@ -6,7 +6,6 @@ variables:
   webAppName: 'testwebabb'
   environmentName: 'testwebabb'
   vmImageName: 'ubuntu-latest'
-  appFolder: 'client'
 
 stages:
 - stage: Build
@@ -24,16 +23,20 @@ stages:
       displayName: 'Install Node.js'
 
     - script: |
+        ls -la
+        cat package.json
         npm ci
         npm run build
         npm run test --if-present
+        echo "After build:"
+        ls -la
+        find $(System.DefaultWorkingDirectory) -maxdepth 3 -type d \( -name dist -o -name build \)
       displayName: 'npm install, build and test'
-      workingDirectory: '$(System.DefaultWorkingDirectory)/$(appFolder)'
 
     - task: ArchiveFiles@2
-      displayName: 'Archive dist'
+      displayName: 'Archive dist folder'
       inputs:
-        rootFolderOrFile: '$(System.DefaultWorkingDirectory)/$(appFolder)/dist'
+        rootFolderOrFile: '$(System.DefaultWorkingDirectory)/dist'
         includeRootFolder: true
         archiveType: zip
         archiveFile: '$(Build.ArtifactStagingDirectory)/site.zip'
