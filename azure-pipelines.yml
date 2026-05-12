@@ -3,68 +3,64 @@ trigger:
 
 variables:
   azureSubscription: '6c9ce6b0-500c-45f9-b6a2-afdccf688b22'
-  webAppName: 'testwebabb'
-  environmentName: 'testwebabb'
   vmImageName: 'ubuntu-latest'
   nodeVersion: '20.x'
-  appFolder: 'client'
+
+  frontendAppName: 'testwebabb'
+  backendAppName: 'testwebabb'
+
+  frontendEnvironment: 'testwebabb'
+  backendEnvironment: 'testwebabb'
+
+  frontendFolder: 'client'
+  backendFolder: 'server'
 
 stages:
-- stage: Build
-  displayName: Build stage
+- stage: Build_Backend
+  displayName: Build backend
   jobs:
-  - job: Build
-    displayName: Build
+  - job: BuildBackend
+    displayName: Build backend
     pool:
       vmImage: $(vmImageName)
-
     steps:
     - checkout: self
 
     - task: NodeTool@0
-      displayName: 'Install Node.js'
+      displayName: Install Node.js
       inputs:
         versionSpec: '$(nodeVersion)'
 
     - script: |
         pwd
         ls -la
-        ls -la "$(System.DefaultWorkingDirectory)/$(appFolder)"
-        cat "$(System.DefaultWorkingDirectory)/$(appFolder)/package.json"
+        ls -la "$(System.DefaultWorkingDirectory)/$(backendFolder)"
+        cat "$(System.DefaultWorkingDirectory)/$(backendFolder)/package.json"
         npm ci
-        npm run build
         npm run test --if-present
-        ls -la
-        ls -la dist
-      displayName: 'npm install, build and test'
-      workingDirectory: '$(System.DefaultWorkingDirectory)/$(appFolder)'
+      displayName: Install backend dependencies
+      workingDirectory: '$(System.DefaultWorkingDirectory)/$(backendFolder)'
 
-    - task: Bash@3
-      displayName: 'Archive dist folder'
+    - task: ArchiveFiles@2
+      displayName: Archive backend folder
       inputs:
-        targetType: 'inline'
-        script: |
-          set -e
-          if ! command -v zip >/dev/null 2>&1; then
-            sudo apt-get update
-            sudo apt-get install -y zip
-          fi
+        rootFolderOrFile: '$(System.DefaultWorkingDirectory)/$(backendFolder)'
+        includeRootFolder: false
+        archiveType: zip
+        archiveFile: '$(Build.ArtifactStagingDirectory)/backend.zip'
+        replaceExistingArchive: true
 
-          cd "$(System.DefaultWorkingDirectory)/$(appFolder)"
-          test -d dist
-          zip -r "$(Build.ArtifactStagingDirectory)/site.zip" dist
+    - upload: '$(Build.ArtifactStagingDirectory)/backend.zip'
+      artifact: backend-drop
 
-    - upload: '$(Build.ArtifactStagingDirectory)/site.zip'
-      artifact: drop
-
-- stage: Deploy
-  displayName: Deploy stage
-  dependsOn: Build
+- stage: Deploy_Backend
+  displayName: Deploy backend
+  dependsOn: Build_Backend
   condition: succeeded()
   jobs:
-  - deployment: Deploy
-    displayName: Deploy
-    environment: $(environmentName)
+  - deployment: DeployBackend
+    displayName: Deploy backend
+    environment: $(backendEnvironment)
     pool:
       vmImage: $(vmImageName)
     strategy:
@@ -72,14 +68,91 @@ stages:
         deploy:
           steps:
           - download: current
-            artifact: drop
+            artifact: backend-drop
 
           - task: AzureWebApp@1
-            displayName: 'Azure Web App Deploy: testwebabb'
+            displayName: Azure Web App Deploy backend
             inputs:
               azureSubscription: '$(azureSubscription)'
               appType: 'webAppLinux'
-              appName: '$(webAppName)'
+              appName: '$(backendAppName)'
               runtimeStack: 'NODE|20-lts'
-              package: '$(Pipeline.Workspace)/drop/site.zip'
+              package: '$(Pipeline.Workspace)/backend-drop/backend.zip'
+              startupCommand: 'npm start'
+
+- stage: Build_Frontend
+  displayName: Build frontend
+  dependsOn: Deploy_Backend
+  condition: succeeded()
+  jobs:
+  - job: BuildFrontend
+    displayName: Build frontend
+    pool:
+      vmImage: $(vmImageName)
+    steps:
+    - checkout: self
+
+    - task: NodeTool@0
+      displayName: Install Node.js
+      inputs:
+        versionSpec: '$(nodeVersion)'
+
+    - script: |
+        pwd
+        ls -la
+        ls -la "$(System.DefaultWorkingDirectory)/$(frontendFolder)"
+        cat "$(System.DefaultWorkingDirectory)/$(frontendFolder)/package.json"
+        npm ci
+        npm run build
+        npm run test --if-present
+        ls -la
+        ls -la dist
+      displayName: npm install, build and test
+      workingDirectory: '$(System.DefaultWorkingDirectory)/$(frontendFolder)'
+      env:
+        VITE_API_BASE_URL: 'https://testwebabb-api.azurewebsites.net'
+
+    - task: Bash@3
+      displayName: Archive dist folder
+      inputs:
+        targetType: inline
+        script: |
+          set -e
+          if ! command -v zip >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y zip
+          fi
+
+          cd "$(System.DefaultWorkingDirectory)/$(frontendFolder)"
+          test -d dist
+          zip -r "$(Build.ArtifactStagingDirectory)/site.zip" dist
+
+    - upload: '$(Build.ArtifactStagingDirectory)/site.zip'
+      artifact: frontend-drop
+
+- stage: Deploy_Frontend
+  displayName: Deploy frontend
+  dependsOn: Build_Frontend
+  condition: succeeded()
+  jobs:
+  - deployment: DeployFrontend
+    displayName: Deploy frontend
+    environment: $(frontendEnvironment)
+    pool:
+      vmImage: $(vmImageName)
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - download: current
+            artifact: frontend-drop
+
+          - task: AzureWebApp@1
+            displayName: Azure Web App Deploy frontend
+            inputs:
+              azureSubscription: '$(azureSubscription)'
+              appType: 'webAppLinux'
+              appName: '$(frontendAppName)'
+              runtimeStack: 'NODE|20-lts'
+              package: '$(Pipeline.Workspace)/frontend-drop/site.zip'
               startupCommand: 'pm2 serve /home/site/wwwroot/dist --no-daemon --spa'
