@@ -1,4 +1,4 @@
-const API_BASE_URL = "http://localhost:5000/api";
+const response = await fetch('/api/products');
 
 export const fetchProducts = async () => {
   const response = await fetch(`${API_BASE_URL}/products`);
