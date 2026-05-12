@@ -41,21 +41,22 @@ function App() {
 
 
 
-  useEffect(() => {
-   fetch(`${API_BASE_URL}/api/products`)
-      .then((res) => {
-        if (!res.ok) throw new Error("Failed to fetch products");
-        return res.json();
-      })
-      .then((data) => {
-        setProducts(Array.isArray(data) ? data : []);
-        setLoading(false);
-      })
-      .catch((err) => {
-        setError(err.message);
-        setLoading(false);
-      });
-  }, []);
+useEffect(() => {
+  fetch("/api/products")
+    .then((res) => {
+      if (!res.ok) throw new Error("Failed to fetch products");
+      return res.json();
+    })
+    .then((data) => {
+      setProducts(Array.isArray(data) ? data : []);
+      setLoading(false);
+    })
+    .catch((err) => {
+      setError(err.message);
+      setLoading(false);
+    });
+}, []);
+
 
   const preparedProducts = useMemo(() => {
     return products.map((product, index) => {
