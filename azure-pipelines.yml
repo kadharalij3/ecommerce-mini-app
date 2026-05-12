@@ -36,7 +36,7 @@ stages:
     - task: ArchiveFiles@2
       displayName: 'Archive dist folder'
       inputs:
-        rootFolderOrFile: '$(System.DefaultWorkingDirectory)/dist'
+        rootFolderOrFile: '$(System.DefaultWorkingDirectory)/$(appFolder)/dist'
         includeRootFolder: true
         archiveType: zip
         archiveFile: '$(Build.ArtifactStagingDirectory)/site.zip'
