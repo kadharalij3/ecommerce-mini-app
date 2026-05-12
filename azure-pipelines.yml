@@ -9,6 +9,7 @@ variables:
   azureSubscription: 'Azure subscription 1 (ad8f925e-d2a1-4d4a-bb51-3421875c3089)'
   webAppName: 'testwebabb'
   runtimeStack: 'NODE|24-lts'
+  appFolder: 'frontend'
 
 stages:
   - stage: Build
@@ -26,13 +27,14 @@ stages:
               npm ci
               npm run build
             displayName: Install and build
+            workingDirectory: '$(System.DefaultWorkingDirectory)/$(appFolder)'
             env:
               VITE_API_URL: $(VITE_API_URL)
 
           - task: ArchiveFiles@2
             displayName: Archive dist folder
             inputs:
-              rootFolderOrFile: '$(System.DefaultWorkingDirectory)/dist'
+              rootFolderOrFile: '$(System.DefaultWorkingDirectory)/$(appFolder)/dist'
               includeRootFolder: true
               archiveType: 'zip'
               archiveFile: '$(Build.ArtifactStagingDirectory)/site.zip'
@@ -52,7 +54,6 @@ stages:
         steps:
           - download: current
             artifact: drop
-            displayName: Download artifact
 
           - task: AzureWebApp@1
             displayName: Deploy Azure Web App
