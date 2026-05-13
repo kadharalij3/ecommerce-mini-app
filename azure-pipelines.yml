@@ -17,7 +17,7 @@ variables:
   backendFolder: 'server'
 
   backendBaseUrl: 'https://testwebabb-api-ebc8eva8gkaadgh4.canadacentral-01.azurewebsites.net'
-  frontendOrigin: 'https://testwebabb-web-ayg4b7fdgbg2daah.canadacentral-01.azurewebsites.net
+  frontendOrigin: 'https://testwebabb-web-ayg4b7fdgbg2daah.canadacentral-01.azurewebsites.net'
 
 stages:
 - stage: Build_Backend
