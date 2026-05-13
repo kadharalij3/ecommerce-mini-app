@@ -10,9 +10,6 @@ variables:
   frontendAppName: 'testwebabb-web'
   backendAppName: 'testwebabb-api'
 
-  frontendEnvironment: 'testwebabb-web'
-  backendEnvironment: 'testwebabb-api'
-
   frontendFolder: 'client'
   backendFolder: 'server'
 
@@ -58,39 +55,35 @@ stages:
   dependsOn: Build_Backend
   condition: succeeded()
   jobs:
-  - deployment: DeployBackend
+  - job: DeployBackend
     displayName: Deploy backend
-    environment: $(backendEnvironment)
     pool:
       vmImage: $(vmImageName)
-    strategy:
-      runOnce:
-        deploy:
-          steps:
-          - download: current
-            artifact: backend-drop
+    steps:
+    - download: current
+      artifact: backend-drop
 
-          - task: AzureWebApp@1
-            displayName: Deploy backend app
-            inputs:
-              azureSubscription: '$(azureSubscription)'
-              appType: 'webAppLinux'
-              appName: '$(backendAppName)'
-              runtimeStack: 'NODE|20-lts'
-              package: '$(Pipeline.Workspace)/backend-drop/backend.zip'
-              startupCommand: 'npm start'
+    - task: AzureWebApp@1
+      displayName: Deploy backend app
+      inputs:
+        azureSubscription: '$(azureSubscription)'
+        appType: 'webAppLinux'
+        appName: '$(backendAppName)'
+        runtimeStack: 'NODE|20-lts'
+        package: '$(Pipeline.Workspace)/backend-drop/backend.zip'
+        startupCommand: 'npm start'
 
-          - task: AzureCLI@2
-            displayName: Set backend app settings
-            inputs:
-              azureSubscription: '$(azureSubscription)'
-              scriptType: bash
-              scriptLocation: inlineScript
-              inlineScript: |
-                az webapp config appsettings set \
-                  --resource-group "$(resourceGroupName)" \
-                  --name "$(backendAppName)" \
-                  --settings FRONTEND_URL="$(frontendOrigin)" NODE_ENV="production"
+    - task: AzureCLI@2
+      displayName: Set backend app settings
+      inputs:
+        azureSubscription: '$(azureSubscription)'
+        scriptType: bash
+        scriptLocation: inlineScript
+        inlineScript: |
+          az webapp config appsettings set \
+            --resource-group "$(resourceGroupName)" \
+            --name "$(backendAppName)" \
+            --settings FRONTEND_URL="$(frontendOrigin)" NODE_ENV="production"
 
 - stage: Build_Frontend
   displayName: Build frontend
@@ -135,24 +128,20 @@ stages:
   dependsOn: Build_Frontend
   condition: succeeded()
   jobs:
-  - deployment: DeployFrontend
+  - job: DeployFrontend
     displayName: Deploy frontend
-    environment: $(frontendEnvironment)
     pool:
       vmImage: $(vmImageName)
-    strategy:
-      runOnce:
-        deploy:
-          steps:
-          - download: current
-            artifact: frontend-drop
+    steps:
+    - download: current
+      artifact: frontend-drop
 
-          - task: AzureWebApp@1
-            displayName: Deploy frontend app
-            inputs:
-              azureSubscription: '$(azureSubscription)'
-              appType: 'webAppLinux'
-              appName: '$(frontendAppName)'
-              runtimeStack: 'NODE|20-lts'
-              package: '$(Pipeline.Workspace)/frontend-drop/frontend.zip'
-              startupCommand: 'pm2 serve /home/site/wwwroot/dist --no-daemon --spa'
+    - task: AzureWebApp@1
+      displayName: Deploy frontend app
+      inputs:
+        azureSubscription: '$(azureSubscription)'
+        appType: 'webAppLinux'
+        appName: '$(frontendAppName)'
+        runtimeStack: 'NODE|20-lts'
+        package: '$(Pipeline.Workspace)/frontend-drop/frontend.zip'
+        startupCommand: 'pm2 serve /home/site/wwwroot/dist --no-daemon --spa'
