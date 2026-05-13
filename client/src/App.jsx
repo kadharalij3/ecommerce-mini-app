@@ -36,13 +36,13 @@ function App() {
   const [sortBy, setSortBy] = useState("featured");
   const [favorites, setFavorites] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState("All");
-  const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 
 
 
 useEffect(() => {
-  fetch("/api/products")
+  fetch(`${API_BASE_URL}/api/products`)
     .then((res) => {
       if (!res.ok) throw new Error("Failed to fetch products");
       return res.json();

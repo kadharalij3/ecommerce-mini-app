@@ -3,23 +3,109 @@ trigger:
 
 variables:
   azureSubscription: '6c9ce6b0-500c-45f9-b6a2-afdccf688b22'
+  resourceGroupName: 'testwebabb-web_group'
   vmImageName: 'ubuntu-latest'
   nodeVersion: '20.x'
-  appName: 'testwebabb'
+
+  frontendAppName: 'testwebabb-web'
+  backendAppName: 'testwebabb-api'
+
+  frontendEnvironment: 'testwebabb-web'
+  backendEnvironment: 'testwebabb-api'
+
   frontendFolder: 'client'
   backendFolder: 'server'
 
+  backendBaseUrl: 'https://testwebabb-api-ebc8eva8gkaadgh4.canadacentral-01.azurewebsites.net'
+  frontendOrigin: 'https://testwebabb-web-ayg4b7fdgbg2daah.canadacentral-01.azurewebsites.net
+
 stages:
-- stage: Build_And_Deploy
-  displayName: Build and deploy full app
+- stage: Build_Backend
+  displayName: Build backend
   jobs:
-  - job: BuildDeploy
+  - job: BuildBackend
+    displayName: Build backend
     pool:
       vmImage: $(vmImageName)
     steps:
     - checkout: self
 
     - task: NodeTool@0
+      displayName: Install Node.js
+      inputs:
+        versionSpec: '$(nodeVersion)'
+
+    - script: |
+        cd "$(System.DefaultWorkingDirectory)/$(backendFolder)"
+        npm ci
+        npm run test --if-present
+      displayName: Install and test backend
+
+    - task: ArchiveFiles@2
+      displayName: Archive backend
+      inputs:
+        rootFolderOrFile: '$(System.DefaultWorkingDirectory)/$(backendFolder)'
+        includeRootFolder: false
+        archiveType: zip
+        archiveFile: '$(Build.ArtifactStagingDirectory)/backend.zip'
+        replaceExistingArchive: true
+
+    - publish: '$(Build.ArtifactStagingDirectory)/backend.zip'
+      artifact: backend-drop
+
+- stage: Deploy_Backend
+  displayName: Deploy backend
+  dependsOn: Build_Backend
+  condition: succeeded()
+  jobs:
+  - deployment: DeployBackend
+    displayName: Deploy backend
+    environment: $(backendEnvironment)
+    pool:
+      vmImage: $(vmImageName)
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - download: current
+            artifact: backend-drop
+
+          - task: AzureWebApp@1
+            displayName: Deploy backend app
+            inputs:
+              azureSubscription: '$(azureSubscription)'
+              appType: 'webAppLinux'
+              appName: '$(backendAppName)'
+              runtimeStack: 'NODE|20-lts'
+              package: '$(Pipeline.Workspace)/backend-drop/backend.zip'
+              startupCommand: 'npm start'
+
+          - task: AzureCLI@2
+            displayName: Set backend app settings
+            inputs:
+              azureSubscription: '$(azureSubscription)'
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: |
+                az webapp config appsettings set \
+                  --resource-group "$(resourceGroupName)" \
+                  --name "$(backendAppName)" \
+                  --settings FRONTEND_URL="$(frontendOrigin)" NODE_ENV="production"
+
+- stage: Build_Frontend
+  displayName: Build frontend
+  dependsOn: Deploy_Backend
+  condition: succeeded()
+  jobs:
+  - job: BuildFrontend
+    displayName: Build frontend
+    pool:
+      vmImage: $(vmImageName)
+    steps:
+    - checkout: self
+
+    - task: NodeTool@0
+      displayName: Install Node.js
       inputs:
         versionSpec: '$(nodeVersion)'
 
@@ -27,34 +113,46 @@ stages:
         cd "$(System.DefaultWorkingDirectory)/$(frontendFolder)"
         npm ci
         npm run build
-      displayName: Build frontend
-
-    - script: |
-        mkdir -p "$(System.DefaultWorkingDirectory)/$(backendFolder)/public"
-        cp -r "$(System.DefaultWorkingDirectory)/$(frontendFolder)/dist/"* "$(System.DefaultWorkingDirectory)/$(backendFolder)/public/"
-      displayName: Copy frontend build into backend public
-
-    - script: |
-        cd "$(System.DefaultWorkingDirectory)/$(backendFolder)"
-        npm ci
         npm run test --if-present
-      displayName: Install backend dependencies
+      displayName: Install, build, and test frontend
+      env:
+        VITE_API_BASE_URL: '$(backendBaseUrl)'
 
     - task: ArchiveFiles@2
+      displayName: Archive frontend dist
       inputs:
-        rootFolderOrFile: '$(System.DefaultWorkingDirectory)/$(backendFolder)'
-        includeRootFolder: false
+        rootFolderOrFile: '$(System.DefaultWorkingDirectory)/$(frontendFolder)/dist'
+        includeRootFolder: true
         archiveType: zip
-        archiveFile: '$(Build.ArtifactStagingDirectory)/app.zip'
+        archiveFile: '$(Build.ArtifactStagingDirectory)/frontend.zip'
         replaceExistingArchive: true
-      displayName: Archive app
 
-    - task: AzureWebApp@1
-      inputs:
-        azureSubscription: '$(azureSubscription)'
-        appType: 'webAppLinux'
-        appName: '$(appName)'
-        runtimeStack: 'NODE|20-lts'
-        package: '$(Build.ArtifactStagingDirectory)/app.zip'
-        startupCommand: 'npm start'
-      displayName: Deploy app
+    - publish: '$(Build.ArtifactStagingDirectory)/frontend.zip'
+      artifact: frontend-drop
+
+- stage: Deploy_Frontend
+  displayName: Deploy frontend
+  dependsOn: Build_Frontend
+  condition: succeeded()
+  jobs:
+  - deployment: DeployFrontend
+    displayName: Deploy frontend
+    environment: $(frontendEnvironment)
+    pool:
+      vmImage: $(vmImageName)
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - download: current
+            artifact: frontend-drop
+
+          - task: AzureWebApp@1
+            displayName: Deploy frontend app
+            inputs:
+              azureSubscription: '$(azureSubscription)'
+              appType: 'webAppLinux'
+              appName: '$(frontendAppName)'
+              runtimeStack: 'NODE|20-lts'
+              package: '$(Pipeline.Workspace)/frontend-drop/frontend.zip'
+              startupCommand: 'pm2 serve /home/site/wwwroot/dist --no-daemon --spa'
