@@ -6,10 +6,10 @@ pool:
   vmImage: ubuntu-latest
 
 variables:
-  acrServiceConnection: 'acr-service-connection'
-  azureSubscription: 'azure-rm-service-connection'
+  acrServiceConnection: 'miniwebapp'
+  azureSubscription: 'Azure subscription 1 (ad8f925e-d2a1-4d4a-bb51-3421875c3089)'
 
-  acrLoginServer: 'youracrname.azurecr.io'
+  acrLoginServer: 'miniwebapp.azurecr.io'
 
   backendRepository: 'ecommerce-server'
   frontendRepository: 'ecommerce-client'
@@ -17,10 +17,10 @@ variables:
   backendDockerfile: 'server/Dockerfile'
   frontendDockerfile: 'client/Dockerfile'
 
-  backendWebAppName: 'ecommerce-api-prod'
-  frontendWebAppName: 'ecommerce-web-prod'
+  backendWebAppName: 'webappbackend'
+  frontendWebAppName: 'webappfront'
 
-  backendUrl: 'https://ecommerce-api-prod.azurewebsites.net'
+  backendUrl: 'https://webappbackend-czekhed5dxffcnbt.canadacentral-01.azurewebsites.net'
   tag: '$(Build.BuildId)'
 
 stages:
@@ -29,6 +29,8 @@ stages:
   jobs:
   - job: BuildBackend
     steps:
+    - checkout: self
+
     - task: Docker@2
       displayName: Build backend image
       inputs:
@@ -36,7 +38,7 @@ stages:
         containerRegistry: '$(acrServiceConnection)'
         repository: '$(backendRepository)'
         dockerfile: '$(backendDockerfile)'
-        buildContext: 'server'
+        buildContext: '$(Build.SourcesDirectory)/server'
         tags: |
           $(tag)
 
@@ -60,7 +62,7 @@ stages:
       inputs:
         azureSubscription: '$(azureSubscription)'
         appName: '$(backendWebAppName)'
-        imageName: '$(acrLoginServer)/$(backendRepository):$(tag)'
+        containers: '$(acrLoginServer)/$(backendRepository):$(tag)'
 
 - stage: Build_Frontend
   displayName: Build and Push Frontend
@@ -68,6 +70,8 @@ stages:
   jobs:
   - job: BuildFrontend
     steps:
+    - checkout: self
+
     - task: Docker@2
       displayName: Build frontend image
       inputs:
@@ -75,7 +79,7 @@ stages:
         containerRegistry: '$(acrServiceConnection)'
         repository: '$(frontendRepository)'
         dockerfile: '$(frontendDockerfile)'
-        buildContext: 'client'
+        buildContext: '$(Build.SourcesDirectory)/client'
         tags: |
           $(tag)
         arguments: '--build-arg VITE_API_BASE_URL=$(backendUrl)'
@@ -100,171 +104,4 @@ stages:
       inputs:
         azureSubscription: '$(azureSubscription)'
         appName: '$(frontendWebAppName)'
-        imageName: '$(acrLoginServer)/$(frontendRepository):$(tag)'
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# trigger:
-# - main
-
-# variables:
-#   azureSubscription: '6c9ce6b0-500c-45f9-b6a2-afdccf688b22'
-#   resourceGroupName: 'testwebabb-web_group'
-#   vmImageName: 'ubuntu-latest'
-#   nodeVersion: '20.x'
-
-#   frontendAppName: 'testwebabb-web'
-#   backendAppName: 'testwebabb-api'
-
-#   frontendFolder: 'client'
-#   backendFolder: 'server'
-
-#   backendBaseUrl: 'https://testwebabb-api-ebc8eva8gkaadgh4.canadacentral-01.azurewebsites.net'
-#   frontendOrigin: 'https://testwebabb-web-ayg4b7fdgbg2daah.canadacentral-01.azurewebsites.net'
-
-# stages:
-# - stage: Build_Backend
-#   displayName: Build backend
-#   jobs:
-#   - job: BuildBackend
-#     displayName: Build backend
-#     pool:
-#       vmImage: $(vmImageName)
-#     steps:
-#     - checkout: self
-
-#     - task: NodeTool@0
-#       displayName: Install Node.js
-#       inputs:
-#         versionSpec: '$(nodeVersion)'
-
-#     - script: |
-#         cd "$(System.DefaultWorkingDirectory)/$(backendFolder)"
-#         npm ci
-#         npm run test --if-present
-#       displayName: Install and test backend
-
-#     - task: ArchiveFiles@2
-#       displayName: Archive backend
-#       inputs:
-#         rootFolderOrFile: '$(System.DefaultWorkingDirectory)/$(backendFolder)'
-#         includeRootFolder: false
-#         archiveType: zip
-#         archiveFile: '$(Build.ArtifactStagingDirectory)/backend.zip'
-#         replaceExistingArchive: true
-
-#     - publish: '$(Build.ArtifactStagingDirectory)/backend.zip'
-#       artifact: backend-drop
-
-# - stage: Deploy_Backend
-#   displayName: Deploy backend
-#   dependsOn: Build_Backend
-#   condition: succeeded()
-#   jobs:
-#   - job: DeployBackend
-#     displayName: Deploy backend
-#     pool:
-#       vmImage: $(vmImageName)
-#     steps:
-#     - download: current
-#       artifact: backend-drop
-
-#     - task: AzureWebApp@1
-#       displayName: Deploy backend app
-#       inputs:
-#         azureSubscription: '$(azureSubscription)'
-#         appType: 'webAppLinux'
-#         appName: '$(backendAppName)'
-#         runtimeStack: 'NODE|20-lts'
-#         package: '$(Pipeline.Workspace)/backend-drop/backend.zip'
-#         startupCommand: 'npm start'
-
-#     - task: AzureCLI@2
-#       displayName: Set backend app settings
-#       inputs:
-#         azureSubscription: '$(azureSubscription)'
-#         scriptType: bash
-#         scriptLocation: inlineScript
-#         inlineScript: |
-#           az webapp config appsettings set \
-#             --resource-group "$(resourceGroupName)" \
-#             --name "$(backendAppName)" \
-#             --settings FRONTEND_URL="$(frontendOrigin)" NODE_ENV="production"
-
-# - stage: Build_Frontend
-#   displayName: Build frontend
-#   dependsOn: Deploy_Backend
-#   condition: succeeded()
-#   jobs:
-#   - job: BuildFrontend
-#     displayName: Build frontend
-#     pool:
-#       vmImage: $(vmImageName)
-#     steps:
-#     - checkout: self
-
-#     - task: NodeTool@0
-#       displayName: Install Node.js
-#       inputs:
-#         versionSpec: '$(nodeVersion)'
-
-#     - script: |
-#         cd "$(System.DefaultWorkingDirectory)/$(frontendFolder)"
-#         npm ci
-#         npm run build
-#         npm run test --if-present
-#       displayName: Install, build, and test frontend
-#       env:
-#         VITE_API_BASE_URL: '$(backendBaseUrl)'
-
-#     - task: ArchiveFiles@2
-#       displayName: Archive frontend dist
-#       inputs:
-#         rootFolderOrFile: '$(System.DefaultWorkingDirectory)/$(frontendFolder)/dist'
-#         includeRootFolder: true
-#         archiveType: zip
-#         archiveFile: '$(Build.ArtifactStagingDirectory)/frontend.zip'
-#         replaceExistingArchive: true
-
-#     - publish: '$(Build.ArtifactStagingDirectory)/frontend.zip'
-#       artifact: frontend-drop
-
-# - stage: Deploy_Frontend
-#   displayName: Deploy frontend
-#   dependsOn: Build_Frontend
-#   condition: succeeded()
-#   jobs:
-#   - job: DeployFrontend
-#     displayName: Deploy frontend
-#     pool:
-#       vmImage: $(vmImageName)
-#     steps:
-#     - download: current
-#       artifact: frontend-drop
-
-#     - task: AzureWebApp@1
-#       displayName: Deploy frontend app
-#       inputs:
-#         azureSubscription: '$(azureSubscription)'
-#         appType: 'webAppLinux'
-#         appName: '$(frontendAppName)'
-#         runtimeStack: 'NODE|20-lts'
-#         package: '$(Pipeline.Workspace)/frontend-drop/frontend.zip'
-#         startupCommand: 'pm2 serve /home/site/wwwroot/dist --no-daemon --spa'
+        containers: '$(acrLoginServer)/$(frontendRepository):$(tag)'
