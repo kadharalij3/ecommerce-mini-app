@@ -5,47 +5,92 @@ resources:
 - repo: self
 
 variables:
-  # Container registry service connection established during pipeline creation
-  dockerRegistryServiceConnection: '51b2aeef-68c2-4fe8-85b0-026edb42b92a'
-  imageRepository: 'ecommerceminiapp'
-  containerRegistry: 'miniwebappcr.azurecr.io'
-  dockerfilePath: '$(Build.SourcesDirectory)/client/Dockerfile'
-  tag: '$(Build.BuildId)'
-
-  # Agent VM image name
   vmImageName: 'ubuntu-latest'
+
+  # Azure service connection
+  azureSubscription: 'e422c1b6-f127-4a4e-a697-14a7ab2846e2N'
+
+  # ACR service connection
+  dockerRegistryServiceConnection: '51b2aeef-68c2-4fe8-85b0-026edb42b92a'
+
+  # ACR details
+  containerRegistry: 'miniwebappcr.azurecr.io'
+  imageRepository: 'ecommerceminiapp'
+  tag: '$(Build.BuildId)'
+  latestTag: 'latest'
+
+  # App Service names
+  backendWebAppName: 'BE-webapp'
+  frontendWebAppName: 'FE-webapp'
 
 stages:
 - stage: Build_Backend
-  displayName: Backend Build and push stage
+  displayName: Build and Push Backend
   jobs:
-  - job: Build
-    displayName: Build
+  - job: BuildBackend
+    displayName: Build Backend Image
     pool:
       vmImage: $(vmImageName)
     steps:
     - task: Docker@2
-      displayName: Build and push Backend an image to container registry
+      displayName: Build and push backend image
       inputs:
         containerRegistry: '$(dockerRegistryServiceConnection)'
         repository: '$(imageRepository)-server'
         command: 'buildAndPush'
         Dockerfile: '**/server/Dockerfile'
-        tags: '$(tag)'
+        tags: |
+          $(tag)
+          $(latestTag)
 
 - stage: Build_Frontend
-  displayName: Frontend Build and push stage
+  displayName: Build and Push Frontend
+  dependsOn: Build_Backend
   jobs:
-  - job: Build
-    displayName: Build
+  - job: BuildFrontend
+    displayName: Build Frontend Image
     pool:
       vmImage: $(vmImageName)
     steps:
     - task: Docker@2
-      displayName: Build and push Frontend an image to container registry
+      displayName: Build and push frontend image
       inputs:
         containerRegistry: '$(dockerRegistryServiceConnection)'
         repository: '$(imageRepository)-client'
         command: 'buildAndPush'
         Dockerfile: '**/client/Dockerfile'
-        tags: '$(tag)'
+        tags: |
+          $(tag)
+          $(latestTag)
+
+- stage: Deploy_Backend
+  displayName: Deploy Backend to App Service
+  dependsOn: Build_Frontend
+  jobs:
+  - job: DeployBackend
+    displayName: Deploy Backend Container
+    pool:
+      vmImage: $(vmImageName)
+    steps:
+    - task: AzureWebAppContainer@1
+      displayName: Deploy backend image to Azure App Service
+      inputs:
+        azureSubscription: '$(azureSubscription)'
+        appName: '$(backendWebAppName)'
+        containers: '$(containerRegistry)/$(imageRepository)-server:$(tag)'
+
+- stage: Deploy_Frontend
+  displayName: Deploy Frontend to App Service
+  dependsOn: Deploy_Backend
+  jobs:
+  - job: DeployFrontend
+    displayName: Deploy Frontend Container
+    pool:
+      vmImage: $(vmImageName)
+    steps:
+    - task: AzureWebAppContainer@1
+      displayName: Deploy frontend image to Azure App Service
+      inputs:
+        azureSubscription: '$(azureSubscription)'
+        appName: '$(frontendWebAppName)'
+        containers: '$(containerRegistry)/$(imageRepository)-client:$(tag)'
