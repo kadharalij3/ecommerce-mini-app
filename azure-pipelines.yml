@@ -8,7 +8,7 @@ variables:
   vmImageName: 'ubuntu-latest'
 
   # Azure service connection
-  azureSubscription: 'e422c1b6-f127-4a4e-a697-14a7ab2846e2N'
+  azureSubscription: 'miniwebapp-SC'
 
   # ACR service connection
   dockerRegistryServiceConnection: '51b2aeef-68c2-4fe8-85b0-026edb42b92a'
