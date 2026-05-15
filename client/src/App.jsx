@@ -37,7 +37,11 @@ function App() {
   const [favorites, setFavorites] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState("All");
 
-  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:3000";
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, "");
+
+  if (!API_BASE_URL) {
+    throw new Error("Missing VITE_API_BASE_URL");
+  }
 
   useEffect(() => {
     fetch(`${API_BASE_URL}/api/products`)
