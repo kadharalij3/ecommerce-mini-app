@@ -17,7 +17,7 @@ variables:
   # App Services
   backendWebAppName: 'BE-webapp'
   frontendWebAppName: 'FE-webapp'
-  resourceGroupName: 'mini-web-app'
+  resourceGroupName: 'miniwebapp'
 
   # Replace if you use a custom domain
   backendBaseUrl: 'https://be-webapp-a7bsbgcaeabtexg5.canadacentral-01.azurewebsites.net'
