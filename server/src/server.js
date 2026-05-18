@@ -12,8 +12,6 @@ const allowedOrigins = [process.env.FRONTEND_URL]
   .filter(Boolean)
   .map(normalizeOrigin);
 
-console.log("Allowed CORS origins:", allowedOrigins.map((o) => JSON.stringify(o)));
-
 app.use(express.json());
 
 app.use(
@@ -22,16 +20,9 @@ app.use(
       if (!origin) return callback(null, true);
 
       const normalizedOrigin = normalizeOrigin(origin);
-
       if (allowedOrigins.includes(normalizedOrigin)) {
         return callback(null, true);
       }
-
-      console.error("CORS blocked", {
-        rawOrigin: JSON.stringify(origin),
-        normalizedOrigin: JSON.stringify(normalizedOrigin),
-        allowedOrigins: allowedOrigins.map((o) => JSON.stringify(o)),
-      });
 
       return callback(new Error(`CORS blocked for origin: ${origin}`));
     },
@@ -46,11 +37,37 @@ app.get("/api/health", (req, res) => {
 
 app.get("/api/products", (req, res) => {
   res.set("Cache-Control", "no-store");
-  res.json([
-    { id: 1, name: "Phone", category: "Electronics", price: 699, image: "https://via.placeholder.com/200?text=Phone" },
-    { id: 2, name: "Shoes", category: "Fashion", price: 89, image: "https://via.placeholder.com/200?text=Shoes" },
-    { id: 3, name: "Watch", category: "Accessories", price: 199, image: "https://via.placeholder.com/200?text=Watch" }
-  ]);
+  res.json({
+    products: [
+      {
+        id: 1,
+        title: "Phone",
+        name: "Phone",
+        description: "Smartphone for daily use",
+        category: "Electronics",
+        price: 699,
+        image: "https://via.placeholder.com/300?text=Phone",
+      },
+      {
+        id: 2,
+        title: "Shoes",
+        name: "Shoes",
+        description: "Comfortable everyday shoes",
+        category: "Fashion",
+        price: 89,
+        image: "https://via.placeholder.com/300?text=Shoes",
+      },
+      {
+        id: 3,
+        title: "Watch",
+        name: "Watch",
+        description: "Classic wrist watch",
+        category: "Accessories",
+        price: 199,
+        image: "https://via.placeholder.com/300?text=Watch",
+      },
+    ],
+  });
 });
 
 app.listen(port, () => {
