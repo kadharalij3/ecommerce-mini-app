@@ -180,7 +180,7 @@ function App() {
       <section className="hero-panel">
         <div className="hero-copy">
           <span className="eyebrow">Premium Catalog</span>
-          <h1>Browse products with images and smart filters</h1>
+          <h1>Select products with images and smart filters</h1>
           <p>
             Search, filter by category, sort results, and favorite products in a more
             polished storefront.
