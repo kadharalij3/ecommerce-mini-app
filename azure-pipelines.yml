@@ -6,7 +6,7 @@ variables:
 
   # Azure connections
   azureSubscription: 'miniwebapp-SC'
-  dockerRegistryServiceConnection: 'fdf129e5-2178-46aa-9f71-8ead4b6e01fb'
+  dockerRegistryServiceConnection: '51b2aeef-68c2-4fe8-85b0-026edb42b92a'
 
   # ACR
   containerRegistry: 'miniwebappcr.azurecr.io'
