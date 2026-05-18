@@ -4,11 +4,14 @@ import cors from "cors";
 const app = express();
 const port = process.env.PORT || 5000;
 
-const allowedOrigins = [
-  process.env.FRONTEND_URL,
-].filter(Boolean);
+const normalizeOrigin = (value) =>
+  typeof value === "string" ? value.trim().replace(/\/$/, "") : value;
 
-console.log("Allowed CORS origins:", allowedOrigins);
+const allowedOrigins = [process.env.FRONTEND_URL]
+  .filter(Boolean)
+  .map(normalizeOrigin);
+
+console.log("Allowed CORS origins:", allowedOrigins.map((o) => JSON.stringify(o)));
 
 app.use(express.json());
 
@@ -16,7 +19,19 @@ app.use(
   cors({
     origin(origin, callback) {
       if (!origin) return callback(null, true);
-      if (allowedOrigins.includes(origin)) return callback(null, true);
+
+      const normalizedOrigin = normalizeOrigin(origin);
+
+      if (allowedOrigins.includes(normalizedOrigin)) {
+        return callback(null, true);
+      }
+
+      console.error("CORS blocked", {
+        rawOrigin: JSON.stringify(origin),
+        normalizedOrigin: JSON.stringify(normalizedOrigin),
+        allowedOrigins: allowedOrigins.map((o) => JSON.stringify(o)),
+      });
+
       return callback(new Error(`CORS blocked for origin: ${origin}`));
     },
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
