@@ -21,8 +21,8 @@ spec:
     spec:
       containers:
         - name: backend
-          image: REPLACE_ACR_LOGIN_SERVER/miniapp-backend:v1
-          imagePullPolicy: IfNotPresent
+          image: acrminiappdevlgyml.azurecr.io/ecommerceminiapp-server:latest
+          imagePullPolicy: Always
           ports:
             - containerPort: 5000
           env:
@@ -40,11 +40,11 @@ spec:
             periodSeconds: 20
           resources:
             requests:
+              cpu: "25m"
+              memory: "64Mi"
+            limits:
               cpu: "100m"
               memory: "128Mi"
-            limits:
-              cpu: "250m"
-              memory: "256Mi"
 ---
 apiVersion: v1
 kind: Service
@@ -77,8 +77,8 @@ spec:
     spec:
       containers:
         - name: frontend
-          image: REPLACE_ACR_LOGIN_SERVER/miniapp-frontend:v1
-          imagePullPolicy: IfNotPresent
+          image: acrminiappdevlgyml.azurecr.io/ecommerceminiapp-client:latest
+          imagePullPolicy: Always
           ports:
             - containerPort: 80
           readinessProbe:
@@ -95,11 +95,11 @@ spec:
             periodSeconds: 20
           resources:
             requests:
+              cpu: "25m"
+              memory: "64Mi"
+            limits:
               cpu: "100m"
               memory: "128Mi"
-            limits:
-              cpu: "250m"
-              memory: "256Mi"
 ---
 apiVersion: v1
 kind: Service
