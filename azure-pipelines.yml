@@ -20,7 +20,7 @@ variables:
   resourceGroupName: 'miniwebapp'
 
   # Replace if you use a custom domain
-  backendBaseUrl: 'https://be-webapp-a7bsbgcaeabtexg5.canadacentral-01.azurewebsites.net'
+  backendBaseUrl: 'http://backend-service:5000'
 
 stages:
 - stage: Build_Backend
