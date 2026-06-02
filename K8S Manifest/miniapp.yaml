@@ -52,12 +52,11 @@ metadata:
   name: backend-service
   namespace: miniapp
 spec:
-  type: ClusterIP
+  type: LoadBalancer
   selector:
     app: backend
   ports:
-    - name: http
-      port: 5000
+    - port: 5000
       targetPort: 5000
 ---
 apiVersion: apps/v1
